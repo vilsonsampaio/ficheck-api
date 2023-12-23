@@ -1,17 +1,18 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
-import { PrismaService } from 'src/shared/database/prisma.service';
 import { hash } from 'bcryptjs';
+import { UsersRepository } from 'src/shared/database/repositories/users.repositories';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly usersRepository: UsersRepository) {}
 
   async create(createUserDto: CreateUserDto) {
     const { name, email, password } = createUserDto;
 
-    const isEmailAlreadyExists = await this.prismaService.user.findUnique({
+    const isEmailAlreadyExists = await this.usersRepository.findUnique({
       where: { email },
+      select: { id: true },
     });
 
     if (isEmailAlreadyExists) {
@@ -20,7 +21,7 @@ export class UsersService {
 
     const hashedPassword = await hash(password, 12);
 
-    const user = await this.prismaService.user.create({
+    const user = await this.usersRepository.create({
       data: {
         name,
         email,
@@ -28,9 +29,12 @@ export class UsersService {
         categories: {
           createMany: {
             data: [
+              // Income
               { name: 'Salário', icon: 'salary', type: 'INCOME' },
               { name: 'Freelance', icon: 'freelance', type: 'INCOME' },
               { name: 'Outro', icon: 'other', type: 'INCOME' },
+
+              // Outcome
               { name: 'Casa', icon: 'home', type: 'OUTCOME' },
               { name: 'Alimentação', icon: 'food', type: 'OUTCOME' },
               { name: 'Educação', icon: 'education', type: 'OUTCOME' },
