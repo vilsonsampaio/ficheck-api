@@ -4,6 +4,8 @@ import { BankAccountsRepository } from 'src/shared/database/repositories/bank-ac
 
 import { ValidateBankAccountOwnershipService } from './validate-bank-account-ownership.service';
 
+import { TransactionType } from 'src/modules/transactions/entities/Transaction';
+
 import { CreateBankAccountDto } from '../dto/create-bank-account.dto';
 import { UpdateBankAccountDto } from '../dto/update-bank-account.dto';
 
@@ -28,9 +30,33 @@ export class BankAccountsService {
     });
   }
 
-  findAllByUserId(userId: string) {
-    return this.bankAccountsRepository.findMany({
+  async findAllByUserId(userId: string) {
+    const bankAccounts = await this.bankAccountsRepository.findMany({
       where: { userId },
+      include: {
+        transactions: {
+          select: {
+            type: true,
+            amount: true,
+          },
+        },
+      },
+    });
+
+    return bankAccounts.map(({ transactions, ...bankAccount }) => {
+      const currentBalance = transactions.reduce(
+        (acc, transaction) =>
+          acc +
+          (transaction.type === TransactionType.INCOME
+            ? transaction.amount
+            : -transaction.amount),
+        bankAccount.initialBalance,
+      );
+
+      return {
+        ...bankAccount,
+        currentBalance,
+      };
     });
   }
 
